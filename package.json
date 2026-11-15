@@ -1,0 +1,15 @@
+{
+  "name": "homelab-status",
+  "version": "1.0.0",
+  "description": "A live, self-hosted control room for your home lab: machines, services, maps, a wall screen, one-click updates and failover. Zero dependencies.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server.mjs",
+    "demo": "node server.mjs --demo",
+    "check": "for f in server.mjs demo/demo.mjs examples/*.mjs public/*.js scripts/*.mjs; do node --check $f || exit 1; done && python3 -m py_compile reporters/*.py && echo all good",
+    "screenshots": "node scripts/screenshots.mjs"
+  }
+}

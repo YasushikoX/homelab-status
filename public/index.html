@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Home Lab Status</title>
+  <meta name="description" content="Health, utilization, AI quota and updates for every machine and service on the tailnet.">
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="ring-ok" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" style="stop-color: var(--accent-2)"/>
+        <stop offset="1" style="stop-color: var(--accent)"/>
+      </linearGradient>
+      <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" style="stop-color: var(--accent); stop-opacity: .28"/>
+        <stop offset="1" style="stop-color: var(--accent); stop-opacity: 0"/>
+      </linearGradient>
+    </defs>
+  </svg>
+  <div id="loadbar" class="loadbar" aria-hidden="true"><span></span></div>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="brand-name">Status</span>
+        <nav class="nav" aria-label="Pages">
+          <a href="/" id="nav-overview">Overview</a>
+          <a href="/sites" id="nav-sites">Sites</a>
+          <a href="/maps" id="nav-maps">Maps</a>
+        </nav>
+        <span id="instance" class="instance"></span>
+      </div>
+      <div class="top-actions">
+        <span class="live" id="live" title="Live: updates every 10 seconds"><i></i><span id="updated">Connecting…</span></span>
+        <button id="btn-refresh" class="btn" type="button" title="Collect stats and run every check now" aria-label="Refresh">
+          <svg class="ico spin-on-busy" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Refresh</span>
+        </button>
+        <button id="btn-check-updates" class="btn" type="button" title="Look for new updates on every machine now" aria-label="Check for updates">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Check for updates</span>
+        </button>
+        <a id="btn-wall" class="btn" href="/wall" target="_blank" rel="noopener" title="Open the wall screen in a new tab: a full-screen, auto-rotating view for an always-on monitor" aria-label="Open wall screen">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 20h8M12 16v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span>Wall</span>
+        </a>
+        <button id="btn-theme" class="btn icon-btn" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-live="polite">
+      <h1 id="hero-title">Home Lab</h1>
+      <p id="hero-sub" class="hero-sub"><span class="sk sk-line" style="width:220px"></span></p>
+    </section>
+
+    <div id="banner"></div>
+
+    <section class="tiles" id="tiles" aria-label="Summary">
+      <div class="tile sk-card"><span class="sk sk-line" style="width:40%"></span><span class="sk sk-big"></span><span class="sk sk-line" style="width:70%"></span></div>
+      <div class="tile sk-card"><span class="sk sk-line" style="width:40%"></span><span class="sk sk-big"></span><span class="sk sk-line" style="width:70%"></span></div>
+      <div class="tile sk-card"><span class="sk sk-line" style="width:40%"></span><span class="sk sk-big"></span><span class="sk sk-line" style="width:70%"></span></div>
+      <div class="tile sk-card"><span class="sk sk-line" style="width:40%"></span><span class="sk sk-big"></span><span class="sk sk-line" style="width:70%"></span></div>
+    </section>
+
+    <section id="problems" aria-label="Problems"></section>
+
+    <section aria-labelledby="h-quota" id="quota-section">
+      <div class="section-head">
+        <h2 id="h-quota">AI quota</h2>
+        <span id="quota-meta" class="muted small"></span>
+      </div>
+      <div id="quota" class="quota-grid">
+        <div class="qcard sk-card"><span class="sk sk-line" style="width:35%"></span><div class="sk-rings"><span class="sk sk-ring"></span><span class="sk sk-ring"></span></div></div>
+        <div class="qcard sk-card"><span class="sk sk-line" style="width:35%"></span><div class="sk-rings"><span class="sk sk-ring"></span><span class="sk sk-ring"></span></div></div>
+        <div class="qcard sk-card"><span class="sk sk-line" style="width:35%"></span><div class="sk-rings"><span class="sk sk-ring"></span></div></div>
+        <div class="qcard sk-card"><span class="sk sk-line" style="width:35%"></span><div class="sk-rings"><span class="sk sk-ring"></span><span class="sk sk-ring"></span></div></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-machines">
+      <div class="section-head"><h2 id="h-machines">Machines</h2></div>
+      <div id="machines" class="machines">
+        <div class="card sk-card"><span class="sk sk-line" style="width:45%"></span><span class="sk sk-bar"></span><span class="sk sk-bar"></span><span class="sk sk-bar"></span></div>
+        <div class="card sk-card"><span class="sk sk-line" style="width:45%"></span><span class="sk sk-bar"></span><span class="sk sk-bar"></span><span class="sk sk-bar"></span></div>
+        <div class="card sk-card"><span class="sk sk-line" style="width:45%"></span><span class="sk sk-bar"></span><span class="sk sk-bar"></span><span class="sk sk-bar"></span></div>
+        <div class="card sk-card"><span class="sk sk-line" style="width:45%"></span><span class="sk sk-bar"></span><span class="sk sk-bar"></span><span class="sk sk-bar"></span></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-services">
+      <div class="section-head">
+        <h2 id="h-services">Services</h2>
+        <div class="segmented" role="group" aria-label="Filter services">
+          <span class="seg-thumb" aria-hidden="true"></span>
+          <button class="seg active" data-filter="all" type="button" aria-pressed="true">All</button>
+          <button class="seg" data-filter="problems" type="button" aria-pressed="false">Problems</button>
+        </div>
+      </div>
+      <div id="services"></div>
+    </section>
+
+    <section aria-labelledby="h-sites" id="sites-section" class="only-sites">
+      <div class="section-head">
+        <h2 id="h-sites">All sites</h2>
+        <span id="sites-meta" class="muted small"></span>
+      </div>
+      <div id="sites"></div>
+    </section>
+
+    <section aria-labelledby="h-maps" id="maps-root" class="only-maps">
+      <h2 id="h-maps" class="sr-only">Home lab maps</h2>
+      <div class="map-toolbar">
+        <div class="segmented" id="map-tabs" role="group" aria-label="Choose a map"></div>
+        <label class="map-search">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM15.5 15.5 21 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input id="map-search" type="search" placeholder="Find a device or service" aria-label="Find on the map" autocomplete="off">
+          <span id="map-search-count" class="map-search-count" aria-live="polite"></span>
+          <kbd>/</kbd>
+        </label>
+        <button id="map-impact" class="btn" type="button" aria-pressed="false" hidden title="Pick a service to see everything that stops working without it">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 5 14h6l-1 8 8-12h-6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          <span>Impact</span>
+        </button>
+        <span id="map-summary" class="map-summary" aria-live="polite"></span>
+      </div>
+      <div class="map-wrap">
+        <div id="map-canvas" class="map-canvas">
+          <svg id="map-svg" aria-labelledby="h-maps"></svg>
+          <div class="map-lock-hint" aria-hidden="true"><span>Tap to explore the map</span></div>
+          <div class="map-zoom" role="group" aria-label="Zoom">
+            <button id="map-zoom-in" class="btn icon-btn" type="button" aria-label="Zoom in" title="Zoom in (+)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+            <button id="map-zoom-out" class="btn icon-btn" type="button" aria-label="Zoom out" title="Zoom out (−)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+            <button id="map-fit" class="btn icon-btn" type="button" aria-label="Fit to screen" title="Fit to screen (0)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button id="map-motion" class="btn icon-btn" type="button" aria-label="Pause or play all motion" aria-pressed="false"></button>
+            <button id="map-done" class="btn icon-btn" type="button" aria-label="Done: let the page scroll again" title="Done" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+          <div id="map-legend" class="map-legend" role="group" aria-label="Connection kinds: click to show or hide"></div>
+        </div>
+        <aside id="map-panel" class="map-panel" aria-label="Details"></aside>
+        <div id="map-live" class="sr-only" aria-live="polite"></div>
+      </div>
+      <details class="map-table-wrap">
+        <summary>Table view</summary>
+        <div id="map-table"></div>
+      </details>
+    </section>
+
+    <section aria-labelledby="h-activity" id="jobs-section">
+      <div class="section-head">
+        <h2 id="h-activity">Recent activity</h2>
+        <div class="segmented" role="group" aria-label="Filter activity" id="activity-filter">
+          <span class="seg-thumb" aria-hidden="true"></span>
+          <button class="seg active" data-afilter="all" type="button" aria-pressed="true">All</button>
+          <button class="seg" data-afilter="problems" type="button" aria-pressed="false">Problems</button>
+          <button class="seg" data-afilter="actions" type="button" aria-pressed="false">Actions</button>
+        </div>
+      </div>
+      <div id="jobs"></div>
+    </section>
+  </main>
+
+  <aside id="drawer" class="drawer" aria-hidden="true" aria-labelledby="drawer-title" role="dialog" aria-modal="true" inert>
+    <div class="drawer-inner">
+      <div class="drawer-head">
+        <h2 id="drawer-title"></h2>
+        <button class="btn icon-btn round" id="drawer-close" type="button" aria-label="Close">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div id="drawer-body"></div>
+    </div>
+  </aside>
+  <div id="scrim" class="scrim"></div>
+  <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script src="/app.js"></script>
+  <script src="/maps.js"></script>
+</body>
+</html>

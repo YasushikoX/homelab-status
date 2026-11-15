@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Runs the dashboard on a Mac as your user (a single copy, or the backup copy).
+     Replace YOUR_HOME with your home folder (e.g. /Users/alex), then:
+       cp deploy/launchd/local.status.dashboard.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.status.dashboard.plist
+     The node path must be absolute: `which node` (Homebrew: /opt/homebrew/bin/node). -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>local.status.dashboard</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>YOUR_HOME/homelab-status/server.mjs</string>
+  </array>
+  <key>WorkingDirectory</key><string>YOUR_HOME/homelab-status</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>YOUR_HOME/Library/Logs/homelab-status.log</string>
+  <key>StandardErrorPath</key><string>YOUR_HOME/Library/Logs/homelab-status.log</string>
+</dict>
+</plist>

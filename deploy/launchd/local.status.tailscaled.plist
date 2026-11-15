@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Failover only, on the Mac that runs the BACKUP copy: a second, separate
+     Tailscale node ("status-backup", tag:status) that exists only to host
+     svc:status while the primary is down. Userspace networking with its own
+     state and socket, so it never touches the Mac's main Tailscale.
+     Needs the open-source tailscaled (Homebrew: `brew install tailscale`);
+     Intel Homebrew lives in /usr/local instead of /opt/homebrew.
+     Replace YOUR_HOME, load it like local.status.dashboard.plist, then once:
+       tailscale --socket=YOUR_HOME/homelab-status/ts/tailscaled.sock up \
+         --hostname=status-backup --advertise-tags=tag:status -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>local.status.tailscaled</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/opt/tailscale/bin/tailscaled</string>
+    <string>--tun=userspace-networking</string>
+    <string>--statedir=YOUR_HOME/homelab-status/ts</string>
+    <string>--socket=YOUR_HOME/homelab-status/ts/tailscaled.sock</string>
+    <string>--port=0</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>YOUR_HOME/Library/Logs/homelab-status-tailscaled.log</string>
+  <key>StandardErrorPath</key><string>YOUR_HOME/Library/Logs/homelab-status-tailscaled.log</string>
+</dict>
+</plist>

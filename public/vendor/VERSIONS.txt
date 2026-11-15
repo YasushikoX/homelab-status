@@ -1,0 +1,2 @@
+@xterm/xterm 5.5.0 (lib/xterm.js, css/xterm.css) and @xterm/addon-fit 0.10.0 (lib/addon-fit.js), MIT license,
+downloaded from cdn.jsdelivr.net on 2026-11-13. Vendored so the terminal works without a CDN.

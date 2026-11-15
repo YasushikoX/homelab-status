@@ -1,0 +1,26 @@
+# /etc/systemd/system/status-dashboard.service
+# Assumes the app in /opt/status/app and the "status" user from bootstrap-linux.sh.
+[Unit]
+Description=Homelab Status dashboard
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=status
+WorkingDirectory=/opt/status/app
+ExecStart=/usr/local/bin/node /opt/status/app/server.mjs
+# Two-copy setups only: while the app is down, stop Tailscale sending users
+# here (the app re-advertises on start). Delete this line for a single copy.
+ExecStopPost=-/usr/bin/tailscale serve drain svc:status
+Restart=always
+RestartSec=5
+# If the event loop wedges, systemd restarts the app (server.mjs pings the watchdog).
+WatchdogSec=90
+NotifyAccess=all
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

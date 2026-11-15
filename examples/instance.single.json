@@ -1,0 +1,29 @@
+{
+  "_comment": "One copy, no failover, served by `tailscale serve` on this host. Copy to ../instance.json. See docs/CONFIG.md",
+  "role": "primary",
+  "hostLabel": "pve · CT 106",
+  "tailnet": "example-tailnet.ts.net",
+  "port": 3900,
+  "socket": "/opt/status/data/app.sock",
+  "dataDir": "/opt/status/data",
+  "sshKey": "/opt/status/.ssh/id_ed25519",
+  "tailscale": {
+    "cli": "/usr/bin/tailscale"
+  },
+  "telegramTokenFile": "/opt/status/secrets/telegram_token",
+  "access": {
+    "pve": {
+      "ssh": "root@192.168.1.10"
+    },
+    "studio": {
+      "ssh": "alex@100.64.0.12"
+    },
+    "mini": {
+      "ssh": "alex@100.64.0.13"
+    },
+    "pi": {
+      "ssh": "status@100.64.0.30"
+    }
+  },
+  "publicUrl": "https://status.example-tailnet.ts.net"
+}

@@ -1,0 +1,34 @@
+{
+  "_comment": "The backup of a two-copy setup (here: on the Mac Studio, which it also monitors locally). Copy to ../instance.json there.",
+  "role": "standby",
+  "hostLabel": "mac-studio",
+  "tailnet": "example-tailnet.ts.net",
+  "service": "svc:status",
+  "port": 3900,
+  "socket": "~/homelab-status/data/app.sock",
+  "dataDir": "~/homelab-status/data",
+  "sshKey": "~/.ssh/status_ed25519",
+  "tailscale": {
+    "cli": "/opt/homebrew/bin/tailscale",
+    "serviceCli": "/opt/homebrew/bin/tailscale",
+    "serviceSocket": "~/homelab-status/ts/tailscaled.sock"
+  },
+  "primaryNode": "status-primary",
+  "primaryHealthPort": 3901,
+  "lanViaSystemTools": true,
+  "telegramTokenFile": "~/.secrets/telegram_token",
+  "access": {
+    "studio": {
+      "local": true
+    },
+    "pve": {
+      "ssh": "root@192.168.1.10"
+    },
+    "mini": {
+      "ssh": "alex@100.64.0.13"
+    },
+    "pi": {
+      "ssh": "status@100.64.0.30"
+    }
+  }
+}

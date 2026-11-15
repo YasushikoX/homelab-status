@@ -1,0 +1,21 @@
+# ---- your own setup: never committed ---------------------------------------
+# The repo ships examples/; your real inventory, maps and per-host settings
+# live next to server.mjs and stay on your machines.
+/config.mjs
+/maps.mjs
+/instance.json
+/data/
+/local/
+
+# private deploy files kept next to the public templates
+/deploy/push.sh
+/deploy/README.md
+/deploy/*.instance.json
+/deploy/local.status.*.plist
+
+# scratch
+/review/
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/

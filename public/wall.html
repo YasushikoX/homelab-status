@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Home Lab Wall</title>
+  <meta name="description" content="Always-on display: rotates through every machine, service, map and metric of the home lab.">
+  <meta name="theme-color" content="#121211">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/wall.css">
+</head>
+<body class="wall">
+  <div id="wall" class="wall-root">
+    <header class="w-top">
+      <div class="w-brand">
+        <svg class="w-logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="w-name">Home Lab</span>
+        <span id="w-overall" class="w-overall"></span>
+      </div>
+      <div class="w-scene-nav">
+        <span id="w-scene-title" class="w-scene-title"></span>
+        <div id="w-dots" class="w-dots" aria-hidden="true"></div>
+      </div>
+      <div class="w-clock"><div id="w-time"></div><div id="w-date"></div></div>
+    </header>
+    <div id="w-strip" class="w-strip" hidden></div>
+    <main id="w-stage" class="w-stage" aria-live="polite">
+      <div id="w-frames" class="w-frames"></div>
+    </main>
+    <footer class="w-foot">
+      <div class="w-progress"><span id="w-bar"></span></div>
+      <div class="w-meta"><span id="w-updated">Connecting…</span><span id="w-hint" class="w-hint"></span></div>
+    </footer>
+  </div>
+  <div id="w-night" class="w-night" aria-hidden="true"></div>
+  <script src="/wall.js"></script>
+</body>
+</html>

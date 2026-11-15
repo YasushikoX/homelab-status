@@ -1,0 +1,16 @@
+# Optional sudo rules for the dashboard's SSH user. Replace USER, keep the lines
+# you want, then check and install:
+#   sudo visudo -cf deploy/sudoers/status-dashboard
+#   sudo install -m 440 deploy/sudoers/status-dashboard /etc/sudoers.d/status-dashboard
+# The reporters detect the power rule and the Power buttons appear.
+
+# 1. Power: reboot or shut down in a minute, and cancel. Nothing else.
+#    Linux:
+USER ALL=(root) NOPASSWD: /sbin/shutdown -r +1 *, /sbin/shutdown -h +1 *, /sbin/shutdown -c
+#    macOS (use instead of the line above):
+# USER ALL=(root) NOPASSWD: /sbin/shutdown -r +1 *, /sbin/shutdown -h +1 *, /usr/bin/killall shutdown
+
+# 2. Linux only, for the "Upgrade packages" and "Restart <service>" buttons.
+#    Be aware: being allowed to run apt-get as root is as good as root. Only add
+#    this if you are fine with the dashboard host being able to administer this box.
+# USER ALL=(root) NOPASSWD: /usr/bin/apt-get update, /usr/bin/env DEBIAN_FRONTEND=noninteractive /usr/bin/apt-get *, /usr/bin/systemctl restart *

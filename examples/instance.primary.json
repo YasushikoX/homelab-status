@@ -1,0 +1,33 @@
+{
+  "_comment": "The primary of a two-copy setup (here: an LXC on Proxmox). Copy to ../instance.json on that host.",
+  "role": "primary",
+  "hostLabel": "pve · CT 106",
+  "tailnet": "example-tailnet.ts.net",
+  "service": "svc:status",
+  "port": 3900,
+  "socket": "/opt/status/data/app.sock",
+  "healthListen": {
+    "host": "0.0.0.0",
+    "port": 3901
+  },
+  "dataDir": "/opt/status/data",
+  "sshKey": "/opt/status/.ssh/id_ed25519",
+  "tailscale": {
+    "cli": "/usr/bin/tailscale"
+  },
+  "telegramTokenFile": "/opt/status/secrets/telegram_token",
+  "access": {
+    "pve": {
+      "ssh": "root@192.168.1.10"
+    },
+    "studio": {
+      "ssh": "alex@100.64.0.12"
+    },
+    "mini": {
+      "ssh": "alex@100.64.0.13"
+    },
+    "pi": {
+      "ssh": "status@100.64.0.30"
+    }
+  }
+}
