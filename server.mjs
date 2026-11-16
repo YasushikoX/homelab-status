@@ -1054,12 +1054,21 @@ async function withdraw() {
   return r.code === 0;
 }
 
-// ---- quiet windows (config QUIET_WINDOWS), e.g. the router's nightly restart
+// ---- quiet windows (config QUIET_WINDOWS), e.g. the router's scheduled restart
 const hhmm = (tz, d = new Date()) => new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d);
+const weekday = (tz, d) => new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(d).toLowerCase();
+// `days` (optional, e.g. ['Sun']) is the day the window starts; the part of a
+// window that runs past midnight counts for the day before.
 function quietWindow(at = Date.now()) {
   for (const w of QUIET_WINDOWS || []) {
-    const t = hhmm(w.tz, new Date(at));
-    if (w.start <= w.end ? t >= w.start && t < w.end : t >= w.start || t < w.end) return w;
+    const d = new Date(at), t = hhmm(w.tz, d);
+    const wraps = w.start > w.end;
+    if (!(wraps ? t >= w.start || t < w.end : t >= w.start && t < w.end)) continue;
+    if (w.days?.length) {
+      const day = weekday(w.tz, wraps && t < w.end ? new Date(at - 86_400_000) : d);
+      if (!w.days.some((x) => String(x).slice(0, 3).toLowerCase() === day)) continue;
+    }
+    return w;
   }
   return null;
 }

@@ -24,7 +24,7 @@ restart the service.
 | `TAILNET` | string | Your tailnet name, used in your own URLs. |
 | `TIMEZONE` | string | IANA zone for times in check details. Default: the server's. |
 | `ALERTS` | object | `{ enabled, afterMin: 3, chatId, url }`. `chatId` is for Telegram; `url` goes at the end of each message. `enabled: false` silences everything, failover notices included. |
-| `QUIET_WINDOWS` | array | `{ label, start: 'HH:MM', end: 'HH:MM', tz }`: no alerts or failover inside. |
+| `QUIET_WINDOWS` | array | `{ label, start: 'HH:MM', end: 'HH:MM', tz, days? }`: no alerts or failover inside. `days` (e.g. `['Sun']`) limits it to the days it starts on; leave it out for every day. |
 | `FAILOVER` | object | Two-copy setups only: `{ backupMachine, primary, backup }` (machine id plus display names). |
 | `CADENCE` | object | Seconds between collections per kind (`probes`, `reporters`, `agent`, `ping`): `[someone viewing, nobody, backup on standby, wall screen open]`. |
 | `GUEST_NAMES` / `guestName(vmid, raw)` | | Display names for Proxmox guests. |

@@ -27,10 +27,10 @@ export const QUOTA_ALERTS = false;
 // "paused by quota guard" when disabled (if you run a script that does that).
 export const QUOTA_GUARD_PRIORITY = 10;
 
-// Known daily blips (e.g. a router that restarts every night). Inside a window:
+// Known scheduled blips (e.g. a router that restarts every night). Inside a window:
 // no alerts and no failover. Anything still down when it ends alerts as usual.
 export const QUIET_WINDOWS = [
-  // { label: 'weekly ISP maintenance', start: '02:00', end: '02:30', tz: 'Europe/London' },
+  // { label: 'weekly ISP maintenance', start: '02:00', end: '02:30', days: ['Tue'], tz: 'Europe/London' },
 ];
 
 // Two copies (optional): the primary serves, the backup takes over while it is
