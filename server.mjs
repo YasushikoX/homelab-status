@@ -1139,7 +1139,7 @@ function setRole(active, message) {
   save();
   log(`ROLE: ${message}`);
   logEvent('failover', { status: active ? 'warn' : 'ok', title: active ? 'Backup took over the dashboard' : 'Primary is serving again', detail: message });
-  if (INSTANCE.notify) run('/bin/bash', [expand(INSTANCE.notify), `Status dashboard: ${message}`], { timeout: 40_000 }).then((r) => log(`notify exit ${r.code}`));
+  if (ALERTS.enabled && INSTANCE.notify) run('/bin/bash', [expand(INSTANCE.notify), `Status dashboard: ${message}`], { timeout: 40_000 }).then((r) => log(`notify exit ${r.code}`));
 }
 
 // ================================================================ critical alerts (Telegram or a notify script)

@@ -23,7 +23,7 @@ restart the service.
 | `OWNER_LOGINS` | string[] | Tailscale logins allowed to run actions and the terminal (e.g. `alex@github`). Everyone else is read-only. |
 | `TAILNET` | string | Your tailnet name, used in your own URLs. |
 | `TIMEZONE` | string | IANA zone for times in check details. Default: the server's. |
-| `ALERTS` | object | `{ enabled, afterMin: 3, chatId, url }`. `chatId` is for Telegram; `url` goes at the end of each message. |
+| `ALERTS` | object | `{ enabled, afterMin: 3, chatId, url }`. `chatId` is for Telegram; `url` goes at the end of each message. `enabled: false` silences everything, failover notices included. |
 | `QUIET_WINDOWS` | array | `{ label, start: 'HH:MM', end: 'HH:MM', tz }`: no alerts or failover inside. |
 | `FAILOVER` | object | Two-copy setups only: `{ backupMachine, primary, backup }` (machine id plus display names). |
 | `CADENCE` | object | Seconds between collections per kind (`probes`, `reporters`, `agent`, `ping`): `[someone viewing, nobody, backup on standby, wall screen open]`. |
@@ -183,7 +183,7 @@ Checked every 6 h.
 | `sshKey` | The private key used for every SSH connection. |
 | `access` | `machineId → { ssh: 'user@host' }` or `{ local: true }`. Machines without an entry aren't collected (Tailscale status still works). |
 | `telegramTokenFile` | File holding the Telegram bot token. |
-| `notify` | Script called with the alert text as its first argument (instead of Telegram). |
+| `notify` | Script called with the alert text as its first argument (instead of Telegram). The backup also uses it for failover notices. |
 | `lanViaSystemTools` | macOS hosts: probe LAN addresses through `/usr/bin/curl` and `nc`. macOS's Local Network privacy blocks Node. |
 | `allowAnonymousActions` | Allow actions without a Tailscale identity. Only for setups behind your own authenticated proxy. |
 
