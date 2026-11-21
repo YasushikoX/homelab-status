@@ -236,9 +236,29 @@ main > section { min-width: 0; }
 /* =====================================================================
    AI quota (rings show quota LEFT)
    ===================================================================== */
-.quota-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-@media (max-width: 1280px) { .quota-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .quota-grid { grid-template-columns: 1fr; } }
+/* One row that scrolls sideways: a regular card is a quarter of the row (so four
+   fit, as before), a card with more rings is as wide as its rings need. */
+.quota-scroll { position: relative; }
+.quota-grid {
+  --col: calc((100% - 36px) / 4);
+  display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity; scroll-padding-inline: 2px; padding: 2px 2px 10px; margin: -2px -2px -10px;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.quota-grid > .qcard { flex: 0 0 max(var(--col), 272px, calc(var(--rings, 2) * 92px + 32px)); scroll-snap-align: start; }
+.quota-grid > .qcard:last-child { scroll-snap-align: end; } /* so the very end is a resting point too */
+.quota-grid > .qcard.wide { flex-basis: max(var(--col), 272px, calc(var(--rings, 2) * 116px + 56px)); }
+@media (max-width: 1280px) { .quota-grid { --col: calc((100% - 12px) / 2); } }
+@media (max-width: 640px) { .quota-grid { --col: 86%; } .quota-grid > .qcard, .quota-grid > .qcard.wide { flex-basis: 86%; } }
+.quota-grid::-webkit-scrollbar { height: 6px; }
+.quota-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.quota-grid:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 12px; }
+/* fades at an edge only while there is more to scroll that way */
+.quota-scroll::before, .quota-scroll::after { content: ""; position: absolute; top: 0; bottom: 10px; width: 36px; pointer-events: none; opacity: 0; transition: opacity .2s; z-index: 1; }
+.quota-scroll::before { left: 0; background: linear-gradient(to right, var(--bg), transparent); }
+.quota-scroll::after { right: 0; background: linear-gradient(to left, var(--bg), transparent); }
+.quota-scroll.more-left::before, .quota-scroll.more-right::after { opacity: 1; }
+#quota-err:not(:empty) { margin-bottom: 12px; }
 .qcard { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; transition: border-color .2s; }
 .qcard.off { opacity: 1; }
 .qcard.off .rings { opacity: .6; }
@@ -257,6 +277,22 @@ main > section { min-width: 0; }
 .card-title .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .q-title .meta { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rings { display: flex; gap: 8px; flex-wrap: wrap; }
+/* pools (Antigravity): a caption over each pool, a thin divider between them */
+.rings.grouped { flex-wrap: nowrap; gap: 0; }
+.ring-group { flex: var(--n) 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0 6px; }
+.ring-group + .ring-group { border-left: 1px solid var(--border); }
+.ring-group:first-child { padding-left: 0; } .ring-group:last-child { padding-right: 0; }
+.ring-group .rings { flex-wrap: nowrap; gap: 4px; }
+.ring-group .ring-item { min-width: 80px; padding-inline: 0; }
+.ring-group .ring-item .reset { white-space: nowrap; font-size: 10.5px; }
+.rg-name { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ring-group.spent .rg-name { color: var(--critical-ink); }
+/* phones: pools stack instead of making the card wider than the screen */
+@media (max-width: 640px) {
+  .rings.grouped { flex-wrap: wrap; row-gap: 12px; }
+  .ring-group { flex: 1 1 100%; padding: 0; }
+  .ring-group + .ring-group { border-left: 0; border-top: 1px solid var(--border); padding-top: 10px; }
+}
 .ring-item { flex: 1 1 0; min-width: 84px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 4px; text-align: center; }
 .ring { position: relative; width: 64px; height: 64px; }
 .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
@@ -630,7 +666,7 @@ pre.log { color: #e6e6e1; padding: 12px; font: 12px/1.5 var(--mono); max-height:
   .btn span { display: none; }
   .btn { padding: 6px 8px; }
   main { padding: 14px 16px 56px; gap: 20px; }
-  .machines, .quota-grid, .devices-grid { grid-template-columns: 1fr; }
+  .machines, .devices-grid { grid-template-columns: 1fr; }
   .meter-row { grid-template-columns: 52px minmax(0, 1fr) 96px; }
   .kv { grid-template-columns: 1fr; }
   .tile .value { font-size: 22px; }

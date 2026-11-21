@@ -66,6 +66,19 @@ const ICON = {
       <div class="w-ring-mid"><b>${left == null ? '–' : `${Math.round(left)}%`}</b><span>left</span></div><div class="w-ring-label">${esc(label)}</div>${sub ? `<div class="w-ring-sub">${esc(sub)}</div>` : ''}</div>`;
   }
 
+  // Accounts with separate pools (Antigravity: Gemini, Claude/GPT, Argon) get one ring per
+  // pool, its tightest window, so the card stays the size of the others.
+  function wallWindows(a) {
+    const ws = a.windows || [];
+    const groups = [...new Set(ws.map((w) => w.group))];
+    if (groups.length < 2) return ws;
+    return groups.map((g) => {
+      const low = ws.filter((w) => w.group === g).sort((x, y) => x.left - y.left)[0];
+      const spent = (a.spent || []).find((x) => x.group === g);
+      return { left: low.left, label: g, resetsAt: spent?.until || low.resetsAt }; // the reset time says which window it is
+    });
+  }
+
   // ---------------------------------------------------------------- scenes
   const machineCard = (m) => {
     const s = m.stats || {};
@@ -92,7 +105,7 @@ const ICON = {
           <div class="w-kpi"><span>Machines online</span><b>${sum.machinesUp}<small>/${sum.machinesTotal}</small></b></div>
           <div class="w-kpi"><span>Checks passing</span><b>${sum.checksOk}<small>/${sum.checksTotal}</small></b></div>
           <div class="w-kpi"><span>Pending updates</span><b>${sum.updates}</b><em>${sum.security} security</em></div>
-          <div class="w-kpi"><span>Lowest AI quota</span><b>${lowest ? `${Math.round(lowest.lowest.left)}<small>%</small>` : '–'}</b><em>${lowest ? esc(`${lowest.providerName} · ${lowest.lowest.label}`) : ''}</em></div>
+          <div class="w-kpi"><span>Lowest AI quota</span><b>${lowest ? `${Math.round(lowest.lowest.left)}<small>%</small>` : '–'}</b><em>${lowest ? esc(`${lowest.providerName} · ${lowest.lowest.name || lowest.lowest.label}`) : ''}</em></div>
         </div>
         <div class="w-mstrip">${s.machines.map((m) => `<div class="w-mpill ${esc(m.status)}">${dot(m.status)}<b>${esc(m.name)}</b><span>${m.stats?.cpu_percent != null ? `CPU ${Math.round(m.stats.cpu_percent)}%` : esc({ ok: 'online', off: 'off', down: 'down', warn: 'attention' }[m.status] || '')}</span></div>`).join('')}</div>
       </div>`;
@@ -134,7 +147,7 @@ const ICON = {
     } },
     { id: 'quota', title: 'AI quota left', when: (s) => s.quota.accounts.length > 0, render: (s) => `<div class="w-quota">${s.quota.accounts.map((a) => `<section class="w-card w-qcard ${esc(a.status)}">
         <header><div><h3>${esc(a.providerName)}</h3><p>${esc(a.account)}</p></div>${st(a.status, a.statusLabel)}</header>
-        <div class="w-rings">${(a.windows || []).slice(0, 3).map((w) => ring(w.left, w.label, w.resetsAt ? `resets in ${inT(w.resetsAt)}` : '')).join('') || '<div class="w-off-msg">no usage windows reported</div>'}</div>
+        <div class="w-rings">${wallWindows(a).slice(0, 3).map((w) => ring(w.left, w.label, w.resetsAt ? `resets in ${inT(w.resetsAt)}` : '')).join('') || '<div class="w-off-msg">no usage windows reported</div>'}</div>
       </section>`).join('')}</div>` },
     // map scenes last as long as their camera tour (full view + one stop per region)
     { id: 'network', title: 'Network map', map: 'network', secs: 25 },

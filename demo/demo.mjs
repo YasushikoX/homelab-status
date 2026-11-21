@@ -270,6 +270,14 @@ function quota() {
       windows: [{ label: '5-hour', used: wave('q2', 12, 6, 30), resets_at: reset(3.9) }, { label: 'Weekly', used: 27, resets_at: reset(110) }] },
     { provider: 'claude', account: 'claude-pro@example.com', plan: 'Pro', success: 96, failed: 1, observed_at: sec(now()),
       windows: [{ label: '5-hour', used: 91, resets_at: reset(1.1) }, { label: 'Weekly', used: 73, resets_at: reset(40) }] },
+    // separate pools: Claude/GPT used up while Gemini still works
+    { provider: 'antigravity', account: 'ai-pro@example.com', plan: 'Pro', success: 230, failed: 6, observed_at: sec(now()),
+      cooldowns: [{ model: 'claude-opus-5-5-high', reason: 'quota', status: 429, until: reset(2.6) }],
+      windows: [{ group: 'Gemini', label: '5-hour', used: wave('q3', 18, 8, 30), resets_at: reset(2.6) }, { group: 'Gemini', label: 'Weekly', used: 9, resets_at: reset(90) },
+        { group: 'Claude/GPT', label: '5-hour', used: 100, resets_at: reset(2.6) }, { group: 'Claude/GPT', label: 'Weekly', used: 64, resets_at: reset(90) },
+        { group: 'Argon', label: 'Weekly', used: 0, resets_at: reset(90) }] },
+    { provider: 'kimi-ai', account: 'kimi@example.com', success: 75, failed: 2, observed_at: sec(now()),
+      windows: [{ label: '5-hour', used: 4, resets_at: reset(4.2) }, { label: 'Monthly', used: 22, resets_at: reset(400) }] },
   ] };
 }
 

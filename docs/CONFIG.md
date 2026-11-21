@@ -31,6 +31,7 @@ restart the service.
 | `GUEST_TS` | object | `vmid → { node }`: guests that are also tailnet nodes. |
 | `EXPECTED_STOPPED` | string[] | Docker container names that are stopped on purpose (shown grey). |
 | `QUOTA_ALERTS` | bool | Also list AI quota running low under *Needs attention*. |
+| `QUOTA_VIEW` | object | Optional. `{ order: ['claude', 'codex', 'antigravity'], groups: { antigravity: ['Gemini'] } }`. `order` puts those providers first, in that order. `groups` shows only those pools of a provider that has several (Antigravity: `Gemini`, `Claude/GPT`, `Argon`); hidden pools don't affect its status. |
 | `QUOTA_GUARD_PRIORITY` | number | Optional. CLIProxyAPI accounts at this priority show as *preferred*, and as *paused by quota guard* when disabled. |
 | `actionsFor(machineId, ctx)` | function | Update buttons. See below. |
 | `controlsFor(machineId, ctx)` | function | Power and service buttons. |

@@ -299,8 +299,8 @@ function ring(w, key) {
   const sev = w.left <= 0 ? 'sev-bad' : w.left <= 10 ? 'sev-warn' : '';
   const off = (RING_C * (1 - w.left / 100)).toFixed(2);
   const reset = w.resetsAt ? `${fmtResetAt(w.resetsAt)} · in ${fmtIn(w.resetsAt)}` : 'no reset time';
-  return `<div class="ring-item" data-key="${esc(key)}" title="${esc(`${w.label}: ${w.left}% left (${w.used.toFixed(0)}% used). Resets ${reset}.`)}">
-    <div class="ring ${sev}" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${w.left.toFixed(0)}" aria-label="${esc(`${w.label}: ${w.left.toFixed(0)} percent left, resets ${reset}`)}">
+  return `<div class="ring-item" data-key="${esc(key)}" title="${esc(`${w.name || w.label}: ${w.left}% left (${w.used.toFixed(0)}% used). Resets ${reset}.`)}">
+    <div class="ring ${sev}" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${w.left.toFixed(0)}" aria-label="${esc(`${w.name || w.label}: ${w.left.toFixed(0)} percent left, resets ${reset}`)}">
       <svg viewBox="0 0 74 74" aria-hidden="true"><circle class="track" cx="37" cy="37" r="${RING_R}"/><circle class="arc" cx="37" cy="37" r="${RING_R}" stroke-dasharray="${RING_C.toFixed(2)}" data-anim="ring" data-to="${off}" style="stroke-dashoffset:${RING_C.toFixed(2)}"/></svg>
       <div class="center"><div><span class="pct">${numSpan(w.left)}<small>%</small></span><span class="left-lbl">left</span></div></div>
     </div>
@@ -452,11 +452,12 @@ function quotaShort(a) {
   const w5 = a.windows.find((w) => w.label === '5-hour') || a.lowest;
   if (a.status === 'off') return w5?.resetsAt ? `Paused until ${fmtResetAt(w5.resetsAt)}` : 'Paused';
   if (a.status === 'down') return a.lowest?.resetsAt ? `At limit until ${fmtResetAt(a.lowest.resetsAt)}` : 'At limit';
+  if (a.status === 'warn' && a.spent?.length) return a.spent.map((x) => `${x.group} at limit${x.until ? ` until ${fmtResetAt(x.until)}` : ''}`).join(' · ');
   if (a.status === 'warn' && a.cooling?.length) {
     const c = a.cooling[0];
     return `Cooling down: ${c.model || 'account'}${c.until ? ` until ${fmtResetAt(c.until)}` : ''}${a.cooling.length > 1 ? ` (+${a.cooling.length - 1})` : ''}`;
   }
-  if (a.status === 'warn') return a.lowest ? `${a.lowest.label} ${a.lowest.left.toFixed(0)}% left` : 'Low';
+  if (a.status === 'warn') return a.lowest ? `${a.lowest.name} ${a.lowest.left.toFixed(0)}% left` : 'Low';
   return '';
 }
 function quotaNote(a) {
@@ -465,15 +466,40 @@ function quotaNote(a) {
   const when = w5?.resetsAt ? `${fmtResetAt(w5.resetsAt)} (in ${fmtIn(w5.resetsAt)})` : null;
   if (a.status === 'off') return a.preferred ? `Paused by the quota guard · back after the ${w5?.label || ''} reset${when ? ` at ${when}` : ''}` : 'Disabled in the hub';
   if (a.status === 'down') return `${a.statusLabel}${a.lowest?.resetsAt ? ` · resets ${fmtResetAt(a.lowest.resetsAt)}` : ''}`;
-  return `${a.statusLabel}${a.lowest ? ` · ${a.lowest.label} ${a.lowest.left.toFixed(0)}% left` : ''}`;
+  if (a.spent?.length) {
+    const rest = [...new Set(a.windows.map((w) => w.group))].filter((g) => !a.spent.some((x) => x.group === g));
+    return `${a.spent.map((x) => `${x.group} models are at their limit${x.until ? ` until ${fmtResetAt(x.until)} (in ${fmtIn(x.until)})` : ''}`).join('; ')}${rest.length ? `. ${rest.join(' and ')} still available` : ''}`;
+  }
+  return `${a.statusLabel}${a.lowest ? ` · ${a.lowest.name} ${a.lowest.left.toFixed(0)}% left` : ''}`;
+}
+// One row of rings; providers with separate pools (Antigravity: Gemini, Claude/GPT, Argon) get a caption per pool.
+function quotaRings(a) {
+  const key = (w) => `${a.provider}-${a.account}-${w.name}`;
+  const groups = [...new Set(a.windows.map((w) => w.group))];
+  if (groups.length < 2) return `<div class="rings">${a.windows.map((w) => ring(w, key(w))).join('')}</div>`;
+  return `<div class="rings grouped">${groups.map((g) => {
+    const ws = a.windows.filter((w) => w.group === g);
+    const spent = a.spent?.some((x) => x.group === g);
+    return `<div class="ring-group${spent ? ' spent' : ''}" data-key="g-${esc(a.provider)}-${esc(g)}" style="--n:${ws.length}"><div class="rg-name">${esc(g)}</div><div class="rings">${ws.map((w) => ring(w, key(w))).join('')}</div></div>`;
+  }).join('')}</div>`;
+}
+// The cards sit in one row that scrolls sideways; fades show there is more to either side.
+// Replacing the loading placeholders can make scroll snapping jump to the end, so the
+// first real render puts the row back at the start; after that it stays where you left it.
+let quotaShown = false;
+function quotaEdges() {
+  const el = $('#quota'), wrap = el.parentElement;
+  wrap.classList.toggle('more-left', el.scrollLeft > 4);
+  wrap.classList.toggle('more-right', el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
 }
 function renderQuota(s) {
   const q = s.quota;
   $('#quota-section').hidden = q.enabled === false; // no machine collects quota (reporterConfig.hub_quota)
   $('#quota-meta').textContent = q.fetchedAt ? `Live from the CLIProxyAPI hub · updated ${ago(q.fetchedAt)}${q.stale ? ' · stale' : ''}` : '';
-  if (!q.accounts.length) { morph($('#quota'), `<div class="qcard" data-key="q-empty"><div class="muted">${esc(q.error || 'No quota data yet.')}</div></div>`); return; }
+  morph($('#quota-err'), q.error && q.accounts.length ? `<div class="banner" data-key="q-err">${STATUS_ICONS.warn}<div>${esc(q.error)}</div></div>` : '');
+  if (!q.accounts.length) { morph($('#quota'), `<div class="qcard" data-key="q-empty"><div class="muted">${esc(q.error || 'No quota data yet.')}</div></div>`); quotaEdges(); return; }
   const acked = ackedKeys();
-  morph($('#quota'), (q.error ? `<div class="banner" style="grid-column:1/-1" data-key="q-err">${STATUS_ICONS.warn}<div>${esc(q.error)}</div></div>` : '') + q.accounts.map((a) => {
+  morph($('#quota'), q.accounts.map((a) => {
     const st = (a.status === 'warn' || a.status === 'down') && acked.has(`quota:${a.provider}:${a.account}`) ? 'ack' : a.status;
     const tags = [a.plan ? `<span class="tag">${esc(a.plan)}</span>` : '', a.preferred ? '<span class="tag" title="Used first by the hub; your quota guard pauses it near its limit">preferred</span>' : ''].join('');
     const foot = [
@@ -481,15 +507,18 @@ function renderQuota(s) {
       a.requests.ok != null ? `${a.requests.ok.toLocaleString()} requests · ${a.requests.failed} failed` : '',
     ].filter(Boolean).map(esc);
     const src = a.source === 'live' ? '<span class="src"><i></i>Live</span>' : a.source === 'headers' ? `<span class="src headers"><i></i>From last request${a.observedAt ? ` (${esc(ago(a.observedAt))})` : ''}</span>` : '';
-    return `<div class="qcard ${a.status === 'off' ? 'off' : ''}" data-key="q-${esc(a.provider)}-${esc(a.account)}" data-status="${esc(st)}">
+    const pools = new Set(a.windows.map((w) => w.group)).size;
+    return `<div class="qcard ${a.status === 'off' ? 'off' : ''}${pools > 1 ? ' wide' : ''}" data-key="q-${esc(a.provider)}-${esc(a.account)}" data-status="${esc(st)}" style="--rings:${Math.max(1, a.windows.length)}">
       <div class="q-head"><span class="avatar ${esc(a.provider)}">${esc(a.providerName[0])}</span>
         <div class="q-title"><span class="name" title="${esc(a.providerName)}"><span class="nm">${esc(a.providerName)}</span>${tags}</span><span class="meta" title="${esc(a.account)}">${esc(a.account)}</span></div>
-        <span title="${esc([quotaNote(a) || a.statusLabel, a.unsupportedModels?.length ? `Not available on this seat: ${a.unsupportedModels.join(', ')}` : ''].filter(Boolean).join(' · '))}">${badge(st, { ...QUOTA_LABELS, warn: a.cooling?.length ? 'Cooling' : QUOTA_LABELS.warn })}</span></div>
-      ${a.windows.length ? `<div class="rings">${a.windows.map((w) => ring(w, `${a.provider}-${a.account}-${w.label}`)).join('')}</div>`
+        <span title="${esc([quotaNote(a) || a.statusLabel, a.unsupportedModels?.length ? `Not available on this seat: ${a.unsupportedModels.join(', ')}` : ''].filter(Boolean).join(' · '))}">${badge(st, { ...QUOTA_LABELS, warn: a.spent?.length ? 'Limited' : a.cooling?.length ? 'Cooling' : QUOTA_LABELS.warn })}</span></div>
+      ${a.windows.length ? quotaRings(a)
         : `<div class="muted small">${esc(a.error ? `Couldn't read quota: ${a.error}` : 'The provider reports no usage windows for this account.')}</div>`}
       <div class="q-foot">${[quotaShort(a) ? `<span class="q-state ${esc(a.status)}" title="${esc(quotaNote(a))}">${esc(quotaShort(a))}</span>` : src, ...foot].filter(Boolean).join(' · ')}</div>
     </div>`;
   }).join(''));
+  if (!quotaShown) { $('#quota').scrollLeft = 0; quotaShown = true; }
+  quotaEdges();
 }
 
 // ============================================================ render: machines
@@ -1168,6 +1197,8 @@ function moveThumb(seg) {
   thumb.style.transform = `translateX(${active.offsetLeft - 3}px)`;
 }
 addEventListener('resize', () => moveThumb());
+$('#quota').addEventListener('scroll', quotaEdges, { passive: true });
+addEventListener('resize', quotaEdges);
 
 // "updated 12s ago" stays alive between fetches
 setInterval(() => {

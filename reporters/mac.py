@@ -351,6 +351,81 @@ def _norm_kimi(b):
     return out, {}
 
 
+# Antigravity (Google AI Pro/Ultra): quota comes in groups that run out separately
+# (Gemini models; Claude and GPT models; Gemini 4 Argon), each with its own 5-hour
+# and/or weekly bucket. Google sends no usage headers, so this is the only source.
+AG_QUOTA_URLS = ("https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary",
+                 "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary")
+AG_TIER_URL = "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist"
+AG_HEADERS = {"Authorization": "Bearer $TOKEN$", "Content-Type": "application/json",
+              "User-Agent": "antigravity/hub/2.23.0 darwin/arm64"}
+AG_GROUPS = {"gemini models": "Gemini", "claude and gpt models": "Claude/GPT"}
+AG_WINDOWS = {"5h": "5-hour", "weekly": "Weekly"}
+
+
+def _ag_group(model):
+    """Which Antigravity pool a model draws from (to match cooldowns to quota groups)."""
+    m = str(model or "").lower()
+    return "Argon" if "argon" in m else "Gemini" if m.startswith("gemini") else "Claude/GPT"
+
+
+def _call(api, auth_index, method, url, headers, data=None):
+    body = {"authIndex": auth_index, "method": method, "url": url, "header": headers}
+    if data is not None:
+        body["data"] = json.dumps(data)
+    r = api("POST", "/api-call", body)
+    b = r.get("body")
+    b = json.loads(b) if isinstance(b, str) and b.strip()[:1] in "{[" else b
+    if int(r.get("status_code") or 0) != 200:
+        raise RuntimeError("HTTP %s" % r.get("status_code"))
+    return b
+
+
+def _norm_antigravity(b):
+    out = []
+    for g in (b or {}).get("groups") or []:
+        name = str(g.get("displayName") or "Quota")
+        group = AG_GROUPS.get(name.lower(), re.sub(r"^Gemini \d+(\.\d+)? ", "", name))
+        for k in g.get("buckets") or []:
+            frac = k.get("remainingFraction")
+            if frac is None:
+                continue
+            win = str(k.get("window") or "").lower()
+            out.append({"label": AG_WINDOWS.get(win, k.get("displayName") or win or "Limit"), "group": group,
+                        "used": round((1 - float(frac)) * 100, 1), "resets_at": _iso_epoch(k.get("resetTime"))})
+    order = list(dict.fromkeys(w["group"] for w in out))  # keep Google's group order
+    out.sort(key=lambda w: (order.index(w["group"]), 0 if w["label"] == "5-hour" else 1))
+    return out
+
+
+def _fetch_antigravity(api, f, old):
+    b = None
+    for url in AG_QUOTA_URLS:  # the hub's own quota page tries the daily endpoint first
+        try:
+            b = _call(api, f["auth_index"], "POST", url, AG_HEADERS, {"project": f.get("project_id")})
+            if b and b.get("groups"):
+                break
+        except Exception as e:  # noqa: BLE001
+            err = e
+    if not (b and b.get("groups")):
+        raise err if b is None else RuntimeError("no quota groups")
+    extra = {}
+    # the plan name barely changes: ask at most every 6 hours
+    if old and old.get("plan") and time.time() - old.get("plan_at", 0) < 6 * 3600:
+        extra = {"plan": old["plan"], "plan_at": old["plan_at"]}
+    else:
+        try:
+            t = _call(api, f["auth_index"], "POST", AG_TIER_URL, AG_HEADERS,
+                      {"cloudaicompanionProject": f.get("project_id"),
+                       "metadata": {"ideType": "ANTIGRAVITY", "platform": "PLATFORM_UNSPECIFIED", "pluginType": "GEMINI"}})
+            tier = (t.get("paidTier") or t.get("currentTier") or {}).get("name")
+            if tier:
+                extra = {"plan": re.sub(r"^Google AI ", "", tier), "plan_at": int(time.time())}
+        except Exception:  # noqa: BLE001
+            pass
+    return _norm_antigravity(b), extra
+
+
 def _from_signals(provider, sig):
     """Fallback: the usage the hub recorded from response headers (no provider call)."""
     out = []
@@ -405,11 +480,20 @@ def hub_quota(q):
                "disabled": bool(f.get("disabled")), "status": f.get("status"), "unavailable": bool(f.get("unavailable")),
                "priority": f.get("priority"),
                "cooldowns": [{"scope": c.get("scope"), "model": c.get("model_key"), "reason": c.get("reason"),
-                              "status": c.get("http_status"), "until": _iso_epoch(c.get("retry_at"))}
+                              "status": c.get("http_status"), "until": _iso_epoch(c.get("retry_at")),
+                              "group": _ag_group(c.get("model_key")) if prov == "antigravity" else None}
                              for c in (f.get("cooldowns") or [])][:20],
                "success": f.get("success"), "failed": f.get("failed"), "windows": [], "source": None, "error": None}
         req = QUOTA_REQ.get(prov)
-        if req and f.get("auth_index") is not None:
+        if prov == "antigravity" and f.get("auth_index") is not None:
+            old = next((a for a in (cached or {}).get("accounts", []) if a.get("provider") == prov and a.get("account") == acc["account"]), None)
+            try:
+                acc["windows"], extra = _fetch_antigravity(api, f, old)
+                acc.update(extra)
+                acc["source"] = "live"
+            except Exception as e:  # noqa: BLE001
+                acc["error"] = str(e)[:160]
+        elif req and f.get("auth_index") is not None:
             try:
                 r = api("POST", "/api-call", {"authIndex": f["auth_index"], "method": "GET", "url": req[0], "header": req[1]})
                 body = r.get("body")

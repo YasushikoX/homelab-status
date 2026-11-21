@@ -36,6 +36,10 @@ const ALERTS = { enabled: false, afterMin: 3, ...CFG.ALERTS };
 // CLIProxyAPI accounts at this priority are "preferred" and, when disabled, shown as
 // paused by a quota guard (a script of yours that pauses them near their limit). Optional.
 const QUOTA_GUARD_PRIORITY = CFG.QUOTA_GUARD_PRIORITY ?? null;
+// Optional: QUOTA_VIEW = { order: ['claude', 'codex', 'antigravity'], groups: { antigravity: ['Gemini'] } }
+// order: providers listed first, in that order (others after). groups: show only these pools of
+// a provider; the hidden pools don't count toward its status either.
+const QUOTA_VIEW = { order: [], groups: {}, ...CFG.QUOTA_VIEW };
 const CADENCE = CFG.CADENCE || { probes: [30, 120, 300, 60], reporters: [60, 300, 600, 120], agent: [30, 300, 600, 120], ping: [60, 300, 600, 120] };
 const guestName = CFG.guestName || ((vmid, raw) => String(raw || `Guest ${vmid}`));
 // Time zone for times shown in check details (backup schedules). Default: this host's.
@@ -607,7 +611,7 @@ function fmtBytes(b) {
 // ---------------------------------------------------------------- AI subscription quota
 // Collected by the reporter of the machine with reporterConfig.hub_quota (where the
 // CLIProxyAPI management key lives); the key never leaves that machine.
-const PROVIDER_NAMES = { claude: 'Claude', codex: 'ChatGPT · Codex', 'kimi-ai': 'Kimi' };
+const PROVIDER_NAMES = { claude: 'Claude', codex: 'ChatGPT · Codex', 'kimi-ai': 'Kimi', antigravity: 'Antigravity' };
 const QUOTA_STALE_MS = 20 * MIN;
 
 function quotaView() {
@@ -617,32 +621,46 @@ function quotaView() {
   if (!q) return { accounts: [], fetchedAt: null, stale: true, enabled: !!QUOTA_ID, error: rep?.ok === false ? `${where} unreachable: ${rep.error}` : 'not collected yet' };
   const fetchedAt = q.fetched_at ? q.fetched_at * 1000 : null;
   const stale = !fetchedAt || Date.now() - fetchedAt > QUOTA_STALE_MS;
+  const rank = (p) => { const i = QUOTA_VIEW.order.indexOf(p); return i < 0 ? QUOTA_VIEW.order.length : i; };
   const accounts = (q.accounts || []).map((a, i) => {
-    const windows = (a.windows || []).map((w) => ({
-      label: w.label, used: Math.max(0, Math.min(100, w.used)), left: Math.max(0, Math.round((100 - w.used) * 10) / 10),
+    const keep = QUOTA_VIEW.groups[a.provider];
+    const shown = (x) => !keep || !x.group || keep.includes(x.group);
+    // `group`: some providers (Antigravity) have separate pools, e.g. Gemini vs Claude/GPT models.
+    // `name` is the label to use outside the card ("Claude/GPT 5-hour").
+    const windows = (a.windows || []).filter(shown).map((w) => ({
+      label: w.label, group: w.group || null, name: w.group ? `${w.group} ${w.label}` : w.label,
+      used: Math.max(0, Math.min(100, w.used)), left: Math.max(0, Math.round((100 - w.used) * 10) / 10),
       resetsAt: w.resets_at ? w.resets_at * 1000 : null, locked: w.locked || null,
     }));
     const lowest = windows.reduce((m, w) => (m == null || w.left < m.left ? w : m), null);
+    // A pool is used up when any of its windows is; it comes back once all of those have reset.
+    const pools = [...new Set(windows.map((w) => w.group))];
+    const spent = pools.map((g) => {
+      const out = windows.filter((w) => w.group === g && (w.left <= 0 || w.locked));
+      return out.length ? { group: g, until: Math.max(...out.map((w) => w.resetsAt || 0)) || null } : null;
+    }).filter(Boolean);
     // cooldowns: the hub pauses a model on an account after errors. 404 "not_found" just means this
     // seat can't use that model: not a quota problem.
-    const cds = Array.isArray(a.cooldowns) ? a.cooldowns : [];
+    const cds = (Array.isArray(a.cooldowns) ? a.cooldowns : []).filter(shown);
     const coolingNow = cds.filter((c) => c.reason !== 'not_found' && c.status !== 404 && (!c.until || c.until * 1000 > Date.now()));
     const unsupported = [...new Set(cds.filter((c) => c.reason === 'not_found' || c.status === 404).map((c) => c.model).filter(Boolean))];
     let status = 'ok', statusLabel = 'Available';
     const guarded = QUOTA_GUARD_PRIORITY != null && a.priority === QUOTA_GUARD_PRIORITY;
     if (a.disabled) { status = 'off'; statusLabel = guarded ? 'Paused by quota guard' : 'Disabled in hub'; }
-    else if (a.limit_reached || windows.some((w) => w.left <= 0 || w.locked)) { status = 'down'; statusLabel = 'Limit reached'; }
+    else if (a.limit_reached || (spent.length && spent.length === pools.length)) { status = 'down'; statusLabel = 'Limit reached'; }
+    else if (spent.length) { status = 'warn'; statusLabel = `${spent.map((x) => x.group).join(' and ')} at limit`; }
     else if (lowest && lowest.left <= 10) { status = 'warn'; statusLabel = 'Almost used up'; }
     else if (a.unavailable || coolingNow.length) { status = 'warn'; statusLabel = 'Cooling down'; }
     else if (!windows.length) { status = 'unknown'; statusLabel = 'No quota data'; }
     return {
-      id: `${a.provider}-${i}`, provider: a.provider, providerName: PROVIDER_NAMES[a.provider] || a.provider, account: a.account,
-      plan: a.plan || null, preferred: guarded, resetCredits: a.reset_credits ?? null,
+      // one pool left (QUOTA_VIEW.groups): name it, e.g. "Antigravity · Gemini"
+      id: `${a.provider}-${i}`, provider: a.provider, providerName: `${PROVIDER_NAMES[a.provider] || a.provider}${keep?.length === 1 ? ` · ${keep[0]}` : ''}`, account: a.account,
+      plan: a.plan || null, only: keep && keep.length ? keep : null, preferred: guarded, resetCredits: a.reset_credits ?? null,
       cooling: coolingNow.map((c) => ({ model: c.model, reason: c.reason, until: c.until ? c.until * 1000 : null })), unsupportedModels: unsupported,
-      status, statusLabel, windows, lowest, source: a.source, error: a.error, observedAt: a.observed_at ? a.observed_at * 1000 : null,
+      status, statusLabel, windows, lowest, spent: pools.length > 1 ? spent : [], source: a.source, error: a.error, observedAt: a.observed_at ? a.observed_at * 1000 : null,
       requests: { ok: a.success ?? null, failed: a.failed ?? null },
     };
-  });
+  }).map((a, i) => ({ a, i })).sort((x, y) => rank(x.a.provider) - rank(y.a.provider) || x.i - y.i).map((x) => x.a);
   return { accounts, fetchedAt, stale, enabled: true, error: q.error || (rep?.ok === false ? `${where} unreachable, showing last values: ${rep.error}` : null) };
 }
 
@@ -676,7 +694,7 @@ function stateView() {
       key: c.where === 'probe' ? `probe:${c.id}` : `check:${c.machine}:${c.name}`, kind: 'check', machine: c.machine, name: c.name, detail: c.detail, status: c.status })),
     ...quota.accounts.filter((a) => QUOTA_ALERTS && (a.status === 'down' || a.status === 'warn')).map((a) => ({
       key: `quota:${a.provider}:${a.account}`, kind: 'quota', name: `${a.providerName} quota`, status: 'warn', machine: QUOTA_ID,
-      detail: `${a.account}: ${a.statusLabel}${a.lowest ? ` (${a.lowest.label} ${a.lowest.left}% left${a.lowest.resetsAt ? `, resets in ${fmtIn(a.lowest.resetsAt)}` : ''})` : ''}`,
+      detail: `${a.account}: ${a.statusLabel}${a.lowest ? ` (${a.lowest.name} ${a.lowest.left}% left${a.lowest.resetsAt ? `, resets in ${fmtIn(a.lowest.resetsAt)}` : ''})` : ''}`,
     })),
   ];
   const { problems, acknowledged } = applyAcks(allProblems);
